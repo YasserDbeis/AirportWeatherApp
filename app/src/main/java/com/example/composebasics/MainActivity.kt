@@ -26,24 +26,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.ImeOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.composebasics.data.AirportSearchViewModel
 import com.example.composebasics.data.MetarViewModel
 import com.example.composebasics.helpers.Airport
 import com.example.composebasics.helpers.Metar
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        val airportSearchViewModel = AirportSearchViewModel()
         super.onCreate(savedInstanceState)
         setContent {
+            val airportSearchViewModel: AirportSearchViewModel = viewModel()
             MyApp { MyScreenContent(airportSearchViewModel) }
         }
     }
@@ -63,7 +66,7 @@ fun MyApp(content: @Composable () -> Unit) {
 @Composable
 fun MyScreenContent(airportSearchViewModel: AirportSearchViewModel) {
 
-    var queryString by remember {
+    var queryString by rememberSaveable {
         mutableStateOf("")
     }
 
@@ -71,73 +74,77 @@ fun MyScreenContent(airportSearchViewModel: AirportSearchViewModel) {
         mutableStateOf(null)
     }
 
-    val metarViewModel = MetarViewModel()
+    val metarViewModel: MetarViewModel = viewModel()
 
-    Column(modifier = Modifier.fillMaxHeight()) {
-        val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
-            bottomSheetState = BottomSheetState(BottomSheetValue.Collapsed)
-        )
-        val coroutineScope = rememberCoroutineScope()
-        BottomSheetScaffold(
-            scaffoldState = bottomSheetScaffoldState,
-            sheetContent = {
+    val sheetState = rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed)
+//        Log.e("METAR", bottomSheetState.name)
+    val scaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = sheetState,
+    )
 
-                selectedIcao?.let { WeatherSheetContent(it, metarViewModel) }
+    val coroutineScope = rememberCoroutineScope()
 
-            },
-            sheetPeekHeight = 0.dp,
-            sheetElevation = 20.dp
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetContent = {
+
+            MetarSheetContent(metarViewModel)
+
+        },
+        sheetPeekHeight = 50.dp,
+        sheetElevation = 20.dp,
+        sheetShape = RoundedCornerShape(16.dp)
         ) {
-            Column(Modifier.padding(horizontal = 10.dp)) {
-                SearchBar(
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    queryString = queryString,
-                    setQueryString = { newQueryString: String ->
-                        queryString = newQueryString
-                    },
-                    airportSearchViewModel = airportSearchViewModel
-                )
-
-                if(airportSearchViewModel.airportList.isNotEmpty()) {
-
-                    AirportList(Modifier.weight(1f), airportSearchViewModel, onAirportClick = {icao ->
-                        coroutineScope.launch {
-
-                            metarViewModel.getMetar(icao)
-                            selectedIcao = icao
-                            Log.e("Yasser", "AIRPORT CLICKED $icao")
-                            val bottomSheetState = bottomSheetScaffoldState.bottomSheetState
-
-                            if (bottomSheetState.isCollapsed) {
-                                bottomSheetState.expand()
-                            }
-                        }
+        Column {
+            SearchBar(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                queryString = queryString,
+                setQueryString = { newQueryString: String ->
+                    queryString = newQueryString
+                },
+                airportSearchViewModel = airportSearchViewModel,
+                collapseBottomSheet = {
+                    coroutineScope.launch {
+                        sheetState.collapse()
                     }
-                    )
                 }
-                else {
-                    CircularProgressIndicator(
-                        Modifier.align(Alignment.CenterHorizontally),
-                        color = Color.Red
-                    )
-                }
+            )
+
+            if(airportSearchViewModel.loadingAirports) {
+                CircularProgressIndicator(
+                    Modifier.align(Alignment.CenterHorizontally),
+                    color = Color.Red
+                )
+            } else {
+                AirportList(Modifier.weight(1f), airportSearchViewModel, onAirportClick = {icao ->
+
+                    coroutineScope.launch {
+
+                        metarViewModel.getMetar(icao)
+                        selectedIcao = icao
+
+                        if(sheetState.isCollapsed) {
+                            sheetState.expand()
+                        }
+
+                    }
+                })
             }
-
         }
-
-
     }
+
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun SearchBar(modifier: Modifier, queryString: String, setQueryString: (String) -> Unit, airportSearchViewModel: AirportSearchViewModel) {
+fun SearchBar(modifier: Modifier, queryString: String, setQueryString: (String) -> Unit, airportSearchViewModel: AirportSearchViewModel, collapseBottomSheet: () -> Unit) {
     val focusManager = LocalFocusManager.current
     var error by remember { mutableStateOf(false) }
 
     TextField(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp)
+            .padding(all = 10.dp)
         ,
         colors = TextFieldDefaults.textFieldColors(
             textColor = Color.Gray,
@@ -165,6 +172,8 @@ fun SearchBar(modifier: Modifier, queryString: String, setQueryString: (String) 
             } else {
                 airportSearchViewModel.getAirportList(queryString)
                 focusManager.clearFocus()
+
+                collapseBottomSheet()
             }
         }),
         placeholder = {Text(text = "Search")}
@@ -184,9 +193,15 @@ fun AirportList(
     Log.e("Yasser error", airportSearchViewModel.errorMessage)
     Log.e("Yasser error", airportSearchViewModel.airportList.size.toString())
 
-    if(airportSearchViewModel.errorMessage.isEmpty()) {
+    if(airportSearchViewModel.errorMessage.isEmpty() && airportSearchViewModel.airportList.isNotEmpty()) {
         val airportSearchResults = airportSearchViewModel.airportList
-        
+
+        for (air in airportSearchResults) {
+            Log.e("AIRPORTS", air.toString())
+        }
+
+        Log.e("AIRPORTS", "----------")
+
         LazyColumn() {
             items(items = airportSearchResults) {airport ->
                 if(!airport.name.isNullOrBlank() && !airport.icao.isNullOrBlank()) {
@@ -196,7 +211,7 @@ fun AirportList(
                         elevation = 10.dp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp)
+                            .padding(all = 10.dp)
                         ) {
                         Column(
                             modifier = Modifier
@@ -216,21 +231,26 @@ fun AirportList(
 }
 
 @Composable
-fun WeatherSheetContent(icao: String, metarViewModel: MetarViewModel) {
+fun MetarSheetContent(metarViewModel: MetarViewModel) {
 
-    Box(
+    Column(
         Modifier
             .fillMaxWidth()
             .height(350.dp)
             .background(Color.Green)
             .padding(20.dp)
     ) {
-        metarViewModel.getMetar(icao)
-        val metar: Metar? = metarViewModel.metar
-        Log.e("METAR", metar.toString())
 
-        if(metarViewModel.errorMessage.isNullOrBlank()) {
-            if(metar != null) {
+        if(metarViewModel.loadingMetar) {
+            CircularProgressIndicator(
+                Modifier.align(Alignment.CenterHorizontally),
+                color = Color.Red
+            )
+        } else {
+            val metar: Metar? = metarViewModel.metar
+            Log.e("METAR", metar.toString())
+
+            if(metarViewModel.errorMessage.isNullOrBlank() && metar != null) {
                 Text(text = "WE IN THE SHEET FO ${metar.toString()}")
             }
         }
@@ -240,6 +260,6 @@ fun WeatherSheetContent(icao: String, metarViewModel: MetarViewModel) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    val airportSearchViewModel = AirportSearchViewModel()
+    val airportSearchViewModel: AirportSearchViewModel = viewModel()
     MyApp { MyScreenContent(airportSearchViewModel = airportSearchViewModel) }
 }

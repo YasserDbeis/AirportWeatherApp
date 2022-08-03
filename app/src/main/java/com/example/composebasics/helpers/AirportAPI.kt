@@ -1,6 +1,7 @@
 package com.example.composebasics.helpers
 
 import com.google.gson.annotations.SerializedName
+import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
@@ -17,14 +18,8 @@ data class Altimeter (val value: Float?)
 data class Visibility (val value: Float?)
 data class WindDirection (val value: Float?)
 data class WindSpeed (val value: Float?)
-data class DewpointDecimal(val value: Float?)
+data class Dewpoint(val value: Float?)
 data class Temperature(val value: Float?)
-
-data class RemarksInfo(
-    @SerializedName("dewpoint_decimal")
-    val dewpointDecimal: DewpointDecimal?,
-    val temperature: Temperature?
-)
 
 data class Units(
     val altimeter: String?,
@@ -38,38 +33,27 @@ data class Units(
 data class Metar (
     val altimeter: Altimeter?,
     val visibility: Visibility?,
-    @SerializedName("wind_name")
+    @SerializedName("wind_direction")
     val windDirection: WindDirection?,
     @SerializedName("wind_speed")
     val windSpeed: WindSpeed?,
     @SerializedName("relative_humidity")
     val relativeHumidity: Float?,
-    @SerializedName("remarks_info")
-    val remarksInfo: RemarksInfo?,
+    val dewpoint: Dewpoint?,
+    val temperature: Temperature?,
     val units: Units?
 )
-
-/**
- * Altimeter/Altitude: [altimeter][value]
- * visbility: [visibility][value]
- * wind direction: [wind_direction][value]
- * wind speed: [wind_speed][value]
- * relative humidity: [relative_humidity]
- * dewpoint decimal: [remarks_info][dewpoint_decimal][value]
- * temp decimal: [remarks_info][temperature][value]
- * units: [units][accumulation|altimeter|altitude|temperature|visibility|wind_speed]
- */
 
 const val API_URL = "https://avwx.rest/api/"
 
 interface AirportSearchAPIService {
     @Headers("Authorization: I8LSRuXgKo55emipem-Yi3Q_YI_j3_BrqWAdLQPkzvA")
     @GET("search/station")
-    suspend fun getAirports(@Query("text") queryString: String): List<Airport>
+    fun getAirports(@Query("text") queryString: String): Call<List<Airport>>
 
     @Headers("Authorization: I8LSRuXgKo55emipem-Yi3Q_YI_j3_BrqWAdLQPkzvA")
     @GET("metar/{icao}")
-    suspend fun getMetar(@Path("icao") icao: String): Metar
+    fun getMetar(@Path("icao") icao: String): Call<Metar>
 
     companion object {
         var airportSearchAPIService: AirportSearchAPIService? = null

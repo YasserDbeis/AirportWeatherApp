@@ -9,27 +9,42 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.composebasics.helpers.Airport
 import com.example.composebasics.helpers.AirportSearchAPIService
+import com.example.composebasics.helpers.Metar
 
 import kotlinx.coroutines.launch
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
-class AirportSearchViewModel : ViewModel() {
+class AirportSearchViewModel() : ViewModel() {
     private val _airportList = mutableStateListOf<Airport>()
     var errorMessage: String by mutableStateOf("")
+    var loadingAirports: Boolean by mutableStateOf(false)
+
     val airportList: List<Airport>
         get() = _airportList
 
     fun getAirportList(searchQuery: String) {
-        viewModelScope.launch {
-            val apiService = AirportSearchAPIService.getInstance()
-            try {
+
+        loadingAirports = true
+
+        val request = AirportSearchAPIService.getInstance()
+        val call = request.getAirports(searchQuery)
+
+        call.enqueue(object : Callback<List<Airport>> {
+            override fun onResponse(call: Call<List<Airport>>, response: Response<List<Airport>>) {
                 _airportList.clear()
-                _airportList.addAll(apiService.getAirports(searchQuery))
-                _airportList.forEach{airport ->
-                    airport?.name?.let { Log.e("Yasser", it) }
+                response.body().let {
+                    if (it != null) {
+                        _airportList.addAll(it)
+                    }
                 }
-            } catch (e: Exception) {
-                errorMessage = e.message.toString()
+                loadingAirports = false
             }
-        }
+            override fun onFailure(call: Call<List<Airport>>, t: Throwable) {
+                errorMessage = t.message.toString()
+                loadingAirports = false
+            }
+        })
     }
 }
