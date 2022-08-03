@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ComposeBasics</string>
+    <string name="three_char_error_msg">Search must have at least 3 characters</string>
+
 </resources>
