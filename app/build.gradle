@@ -18,6 +18,12 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+
+        // Load credentials.
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+        buildConfigField "String", "AVWX_AUTH_KEY", "\"${properties.getProperty("AVWX_AUTH_KEY")}\""
     }
 
     buildTypes {

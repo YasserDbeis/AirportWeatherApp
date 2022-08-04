@@ -1,4 +1,7 @@
 package com.example.composebasics.home
+import SEARCH_BAR_ERROR_MSG_START_PADDING
+import SEARCH_BAR_PADDING
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,16 +15,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.composebasics.R
+import com.example.composebasics.UiHelpers.ErrorText
 import com.example.composebasics.consts.MIN_SEARCH_LEN
-import com.example.composebasics.consts.SEARCH_BAR_PADDING
 import com.example.composebasics.data.AirportSearchViewModel
-import com.example.composebasics.R.string
 
 @Composable
 fun SearchBar(
+    modifier: Modifier = Modifier.background(Color.Transparent),
     queryString: String,
     setQueryString: (String) -> Unit,
     airportSearchViewModel: AirportSearchViewModel,
@@ -34,6 +39,7 @@ fun SearchBar(
     TextField(
         modifier = Modifier
             .fillMaxWidth()
+            .background(Color.Transparent)
             .padding(all = SEARCH_BAR_PADDING)
         ,
         colors = TextFieldDefaults.textFieldColors(
@@ -81,6 +87,10 @@ fun SearchBar(
         placeholder = { Text(text = "Search", color = MaterialTheme.colors.onPrimary) }
     )
     if(error) {
-        Text(text = string.three_char_error_msg.toString(), color = MaterialTheme.colors.error)
+        val errorMessage = stringResource(id = R.string.three_char_error_msg)
+        ErrorText(
+            modifier = Modifier.padding(start = SEARCH_BAR_ERROR_MSG_START_PADDING),
+            errorMessage = errorMessage
+        )
     }
 }

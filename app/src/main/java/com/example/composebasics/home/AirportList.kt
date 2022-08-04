@@ -1,5 +1,8 @@
 package com.example.composebasics.home
 
+import CARD_ELEVATION_DP
+import CARD_INNER_PADDING
+import CARD_OUTER_PADDING
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,9 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.composebasics.consts.CARD_ELEVATION_DP
-import com.example.composebasics.consts.CARD_INNER_PADDING
-import com.example.composebasics.consts.CARD_OUTER_PADDING
 import com.example.composebasics.data.AirportSearchViewModel
 
 

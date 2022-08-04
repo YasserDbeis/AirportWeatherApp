@@ -1,4 +1,7 @@
 package com.example.composebasics.containers
+import BOTTOM_SHEET_CORNER_RADIUS
+import BOTTOM_SHEET_PEEK_HEIGHT
+import SURFACE_ELEVATION_DP
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,14 +11,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.composebasics.home.SearchBar
-import com.example.composebasics.consts.BOTTOM_SHEET_CORNER_RADIUS
-import com.example.composebasics.consts.BOTTOM_SHEET_PEEK_HEIGHT
-import com.example.composebasics.consts.SURFACE_ELEVATION_DP
 import com.example.composebasics.data.AirportSearchViewModel
 import com.example.composebasics.data.MetarViewModel
-import com.example.composebasics.home.AirportList
-import com.example.composebasics.home.MetarSheetContent
+import com.example.composebasics.home.*
 import com.example.composebasics.ui.theme.ComposeBasicsTheme
 import kotlinx.coroutines.launch
 
@@ -46,15 +44,15 @@ fun AppContentContainer(airportSearchViewModel: AirportSearchViewModel) {
 
     val coroutineScope = rememberCoroutineScope()
 
-    BottomSheetScaffold(
+    BottomSheetScaffold (
         scaffoldState = scaffoldState,
-        sheetContent = { MetarSheetContent(metarViewModel) },
+        sheetContent = { MetarSheetContainer(metarViewModel) },
         sheetPeekHeight = BOTTOM_SHEET_PEEK_HEIGHT,
         sheetElevation = SURFACE_ELEVATION_DP,
         sheetShape = RoundedCornerShape(BOTTOM_SHEET_CORNER_RADIUS)
     ) {
         Column {
-            SearchBar(
+            SearchBar (
                 queryString = queryString,
                 setQueryString = { newQueryString: String ->
                     queryString = newQueryString
@@ -72,19 +70,23 @@ fun AppContentContainer(airportSearchViewModel: AirportSearchViewModel) {
                     color = MaterialTheme.colors.primary
                 )
             } else {
-                AirportList (
-                    Modifier.weight(1f),
-                    airportSearchViewModel,
-                    onAirportClick = { icao ->
+                if(airportSearchViewModel.airportList.isEmpty()) {
+                    AirportsListPlaceholder(noSearchResults = airportSearchViewModel.firstSearchMade)
+                } else {
+                    AirportList (
+                        Modifier.weight(1f),
+                        airportSearchViewModel,
+                        onAirportClick = { icao ->
+                            coroutineScope.launch {
+                                metarViewModel.getMetar(icao)
 
-                    coroutineScope.launch {
-                        metarViewModel.getMetar(icao)
+                                if(sheetState.isCollapsed) {
+                                    sheetState.expand()
+                                }
+                            }
+                    })
+                }
 
-                        if(sheetState.isCollapsed) {
-                            sheetState.expand()
-                        }
-                    }
-                })
             }
         }
     }
